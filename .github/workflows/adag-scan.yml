@@ -33,12 +33,11 @@ jobs:
           LLM_PROVIDER: github-models
           GITHUB_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
           GITHUB_MODELS_MODEL: openai/gpt-4.1
-          POLICIES_DIR: ${{ github.workspace }}/policies
           LLM_TEMPERATURE: "0"
           LLM_MAX_TOKENS: "4096"
         run: |
           set +e
-          adag scan ./infrastructure/ --format sarif > results.sarif.json 2>scan-stderr.txt
+          adag scan ./infrastructure/ --format sarif --policies-dir "${{ github.workspace }}/policies" > results.sarif.json 2>scan-stderr.txt
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
           set -e
 
@@ -48,12 +47,11 @@ jobs:
           LLM_PROVIDER: github-models
           GITHUB_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
           GITHUB_MODELS_MODEL: openai/gpt-4.1
-          POLICIES_DIR: ${{ github.workspace }}/policies
           LLM_TEMPERATURE: "0"
           LLM_MAX_TOKENS: "4096"
         run: |
           set +e
-          adag scan ./infrastructure/ --format json > results.json 2>>scan-stderr.txt
+          adag scan ./infrastructure/ --format json --policies-dir "${{ github.workspace }}/policies" > results.json 2>>scan-stderr.txt
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
           set -e
 
@@ -75,10 +73,11 @@ jobs:
             const exitCode = '${{ steps.scan-json.outputs.exit_code }}';
 
             try {
-              const results = JSON.parse(fs.readFileSync('results.json', 'utf8'));
-              const violations = results.violations || [];
-              const filesScanned = results.files_scanned ?? results.summary?.files_scanned ?? '?';
-              const totalViolations = violations.length;
+              // JSON output is an array of per-file results
+              const fileResults = JSON.parse(fs.readFileSync('results.json', 'utf8'));
+              const filesScanned = fileResults.length;
+              const allViolations = fileResults.flatMap(r => r.violations || []);
+              const totalViolations = allViolations.length;
 
               if (totalViolations === 0) {
                 body = `## ✅ ADAG Governance Scan — PASSED\n\n`;
@@ -88,16 +87,15 @@ jobs:
                 body = `## ❌ ADAG Governance Scan — FAILED\n\n`;
                 body += `**${totalViolations}** violation(s) found. Fix these before merging.\n\n`;
 
-                // Build violations table
                 body += `| Resource | Policy | Severity | Detail |\n`;
                 body += `|---|---|---|---|\n`;
-                for (const v of violations.slice(0, 20)) {
+                for (const v of allViolations.slice(0, 20)) {
                   const resource = v.resource_type && v.resource_name
                     ? `\`${v.resource_type}.${v.resource_name}\``
-                    : v.resource || '—';
-                  const policy = v.policy || v.policy_id || '—';
+                    : '—';
+                  const policy = v.policy_ref || '—';
                   const severity = v.severity || '—';
-                  const detail = (v.message || v.detail || '').substring(0, 80);
+                  const detail = (v.description || v.remediation_hint || '').substring(0, 80);
                   body += `| ${resource} | ${policy} | ${severity} | ${detail} |\n`;
                 }
                 if (totalViolations > 20) {
@@ -112,7 +110,6 @@ jobs:
 
             body += `\n\n---\n_Powered by [ADAG](https://github.com/m3dcodie/arch_agent) · [View full run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})_`;
 
-            // Find and update existing bot comment, or create new one
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
