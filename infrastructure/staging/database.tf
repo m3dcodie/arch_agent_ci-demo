@@ -24,13 +24,13 @@ resource "aws_db_instance" "staging_DB_Unprotected" {
   instance_class    = "db.t3.micro"
   allocated_storage = 20
 
-  storage_encrypted   = false   # ✗ encryption_at_rest
-  deletion_protection = false   # ✗ delete_protection
+  storage_encrypted   = false # ✗ encryption_at_rest
+  deletion_protection = false # ✗ delete_protection
 
-  backup_retention_period = 0   # ✗ backup_retention + automated_backups_enabled
+  backup_retention_period = 0 # ✗ backup_retention + automated_backups_enabled
 
-  multi_az            = false   # ✗ multi_az_requirement
-  publicly_accessible = true    # ✗ public_access_block
+  multi_az            = false # ✗ multi_az_requirement
+  publicly_accessible = true  # ✗ public_access_block
 
   skip_final_snapshot = true
 
@@ -38,7 +38,7 @@ resource "aws_db_instance" "staging_DB_Unprotected" {
   password = "changeme123"
 
   tags = {
-    Environment = "production"   # tagged production but violates all production policies
+    Environment = "production" # tagged production but violates all production policies
     # ✗ required_tagging — missing Owner, Application, CostCenter, ManagedBy
   }
 }

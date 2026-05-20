@@ -32,7 +32,7 @@ jobs:
         id: scan-sarif
         env:
           LLM_PROVIDER: github-models
-          GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
+          GITHUB_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
           GITHUB_MODELS_MODEL: openai/gpt-4.1
           POLICIES_DIR: ${{ github.workspace }}/policies
           LLM_TEMPERATURE: "0"
@@ -47,7 +47,7 @@ jobs:
         id: scan-json
         env:
           LLM_PROVIDER: github-models
-          GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
+          GITHUB_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
           GITHUB_MODELS_MODEL: openai/gpt-4.1
           POLICIES_DIR: ${{ github.workspace }}/policies
           LLM_TEMPERATURE: "0"

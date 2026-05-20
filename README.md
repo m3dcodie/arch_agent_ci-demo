@@ -45,7 +45,7 @@ In your GitHub repo → **Settings → Secrets and variables → Actions**, add:
 
 | Secret | Value |
 |---|---|
-| `GITHUB_MODELS_TOKEN` | A fine-grained PAT with **GitHub Copilot → Read** and **Models → Read** permissions |
+| `GH_MODELS_TOKEN` | A fine-grained PAT with **GitHub Copilot → Read** and **Models → Read** permissions |
 
 Create the token at: https://github.com/settings/personal-access-tokens/new
 
