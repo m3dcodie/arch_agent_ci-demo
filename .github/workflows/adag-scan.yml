@@ -25,7 +25,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install ADAG
-        run: pip install adag
+        run: pip install git+https://github.com/m3dcodie/arch_agent.git
 
       - name: Run ADAG scan — SARIF
         id: scan-sarif
