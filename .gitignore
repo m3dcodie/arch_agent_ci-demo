@@ -1,0 +1,11 @@
+.env
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+results.json
+results.sarif.json
+scan-stderr.txt
+__pycache__/
+*.pyc
+.DS_Store

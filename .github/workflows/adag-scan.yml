@@ -1,0 +1,156 @@
+name: ADAG — Terraform Governance Scan
+
+on:
+  pull_request:
+    paths:
+      - 'infrastructure/**/*.tf'
+  workflow_dispatch:
+
+jobs:
+  adag-scan:
+    name: Audit Terraform Governance
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install ADAG
+        run: pip install adag
+
+      - name: Run ADAG scan — SARIF
+        id: scan-sarif
+        env:
+          LLM_PROVIDER: github-models
+          GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
+          GITHUB_MODELS_MODEL: openai/gpt-4.1
+          POLICIES_DIR: ${{ github.workspace }}/policies
+          LLM_TEMPERATURE: "0"
+          LLM_MAX_TOKENS: "4096"
+        run: |
+          set +e
+          adag scan ./infrastructure/ --format sarif > results.sarif.json 2>scan-stderr.txt
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Run ADAG scan — JSON (for PR comment)
+        id: scan-json
+        env:
+          LLM_PROVIDER: github-models
+          GITHUB_MODELS_TOKEN: ${{ secrets.GITHUB_MODELS_TOKEN }}
+          GITHUB_MODELS_MODEL: openai/gpt-4.1
+          POLICIES_DIR: ${{ github.workspace }}/policies
+          LLM_TEMPERATURE: "0"
+          LLM_MAX_TOKENS: "4096"
+        run: |
+          set +e
+          adag scan ./infrastructure/ --format json > results.json 2>>scan-stderr.txt
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+
+      - name: Upload SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: results.sarif.json
+        continue-on-error: true
+
+      - name: Post PR comment
+        uses: actions/github-script@v7
+        if: always() && github.event_name == 'pull_request'
+        with:
+          script: |
+            const fs = require('fs');
+
+            let body = '';
+            const exitCode = '${{ steps.scan-json.outputs.exit_code }}';
+
+            try {
+              const results = JSON.parse(fs.readFileSync('results.json', 'utf8'));
+              const violations = results.violations || [];
+              const filesScanned = results.files_scanned ?? results.summary?.files_scanned ?? '?';
+              const totalViolations = violations.length;
+
+              if (totalViolations === 0) {
+                body = `## ✅ ADAG Governance Scan — PASSED\n\n`;
+                body += `No policy violations found across all Terraform files.\n\n`;
+                body += `**${filesScanned}** file(s) scanned · **0** violations`;
+              } else {
+                body = `## ❌ ADAG Governance Scan — FAILED\n\n`;
+                body += `**${totalViolations}** violation(s) found. Fix these before merging.\n\n`;
+
+                // Build violations table
+                body += `| Resource | Policy | Severity | Detail |\n`;
+                body += `|---|---|---|---|\n`;
+                for (const v of violations.slice(0, 20)) {
+                  const resource = v.resource_type && v.resource_name
+                    ? `\`${v.resource_type}.${v.resource_name}\``
+                    : v.resource || '—';
+                  const policy = v.policy || v.policy_id || '—';
+                  const severity = v.severity || '—';
+                  const detail = (v.message || v.detail || '').substring(0, 80);
+                  body += `| ${resource} | ${policy} | ${severity} | ${detail} |\n`;
+                }
+                if (totalViolations > 20) {
+                  body += `\n_...and ${totalViolations - 20} more. See the Security tab for full results._\n`;
+                }
+
+                body += `\n**${filesScanned}** file(s) scanned · **${totalViolations}** violation(s) · Exit code: \`${exitCode}\``;
+              }
+            } catch (e) {
+              body = `## ⚠️ ADAG Governance Scan — ERROR\n\nCould not parse scan results. Check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.\n\n\`\`\`\n${e.message}\n\`\`\``;
+            }
+
+            body += `\n\n---\n_Powered by [ADAG](https://github.com/m3dcodie/arch_agent) · [View full run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})_`;
+
+            // Find and update existing bot comment, or create new one
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('ADAG Governance Scan')
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+      - name: Upload scan artefacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: adag-results
+          path: |
+            results.json
+            results.sarif.json
+            scan-stderr.txt
+          retention-days: 30
+
+      - name: Fail build on violations
+        if: steps.scan-json.outputs.exit_code == '1'
+        run: |
+          echo "ADAG found governance violations. Fix them before merging."
+          exit 1
