@@ -42,3 +42,4 @@ resource "aws_db_instance" "staging_DB_Unprotected" {
     # ✗ required_tagging — missing Owner, Application, CostCenter, ManagedBy
   }
 }
+
