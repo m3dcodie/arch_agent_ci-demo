@@ -3,7 +3,7 @@ name: ADAG — Terraform Governance Scan
 on:
   pull_request:
     paths:
-      - 'infrastructure/**/*.tf'
+      - "infrastructure/**/*.tf"
   workflow_dispatch:
 
 jobs:
@@ -22,7 +22,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install ADAG
         run: pip install git+https://github.com/m3dcodie/arch_agent.git
@@ -49,7 +49,7 @@ jobs:
         env:
           LLM_PROVIDER: github-models
           GITHUB_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
-          GITHUB_MODELS_MODEL: openai/gpt-4.1
+          GITHUB_MODELS_MODEL: openai/gpt-4o
           INTAKE_MODEL: ${{ vars.INTAKE_MODEL }}
           AUDITOR_MODEL: ${{ vars.AUDITOR_MODEL }}
           LLM_TEMPERATURE: "0"
