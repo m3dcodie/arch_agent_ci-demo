@@ -8,7 +8,7 @@
 #   ✗ backup_retention        — backup_retention_period = 0
 #   ✗ automated_backups       — backup_retention_period = 0
 #   ✗ multi_az_requirement    — multi_az = false on a production-tagged resource
-#   ✗ public_access_block     — publicly_accessible = true
+#   ✓ public_access_block     — FIXED (publicly_accessible = false)
 #   ✗ required_tagging        — missing Owner, Application, CostCenter
 #   ✗ naming_conventions      — underscores + uppercase in resource name
 # =============================================================================
@@ -30,7 +30,7 @@ resource "aws_db_instance" "staging_DB_Unprotected" {
   backup_retention_period = 0 # ✗ backup_retention + automated_backups_enabled
 
   multi_az            = false # ✗ multi_az_requirement
-  publicly_accessible = true  # ✗ public_access_block
+  publicly_accessible = false
 
   skip_final_snapshot = true
 
