@@ -31,7 +31,7 @@ jobs:
         id: scan-json
         env:
           LLM_PROVIDER: github-copilot
-          GH_COPILOT_TOKEN: ${{ secrets.GH_COPILOT_TOKEN }}
+          GITHUB_COPILOT_TOKEN: ${{ secrets.GH_COPILOT_TOKEN }}
           INTAKE_MODEL: ${{ vars.INTAKE_MODEL }}
           AUDITOR_MODEL: ${{ vars.AUDITOR_MODEL }}
           LLM_TEMPERATURE: "0"
