@@ -4,7 +4,7 @@
 #
 # Violations present:
 #   ✓ delete_protection       — FIXED (deletion_protection = true)
-#   ✗ encryption_at_rest      — storage_encrypted = false
+#   ✓ encryption_at_rest      — FIXED (storage_encrypted = true)
 #   ✗ backup_retention        — backup_retention_period = 0
 #   ✗ automated_backups       — backup_retention_period = 0
 #   ✗ multi_az_requirement    — multi_az = false on a production-tagged resource
@@ -24,7 +24,7 @@ resource "aws_db_instance" "staging_DB_Unprotected" {
   instance_class    = "db.t3.micro"
   allocated_storage = 20
 
-  storage_encrypted   = false # ✗ encryption_at_rest
+  storage_encrypted   = true
   deletion_protection = true
 
   backup_retention_period = 0 # ✗ backup_retention + automated_backups_enabled
