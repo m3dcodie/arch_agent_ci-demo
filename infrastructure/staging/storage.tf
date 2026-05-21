@@ -1,36 +1,50 @@
 # =============================================================================
-# STAGING / STORAGE.TF — Non-compliant resources (intentional violations)
-# Expected: adag scan → FAIL
-#
-# Violations present:
-#   ✗ public_access_block     — no aws_s3_bucket_public_access_block resource
-#   ✗ encryption_at_rest      — no aws_s3_bucket_server_side_encryption_configuration
-#   ✗ naming_conventions      — uppercase + underscores in bucket name
-#   ✗ required_tagging        — missing Owner, Application, CostCenter
-#   ✗ kms_key_rotation        — KMS key has enable_key_rotation = false
+# STAGING / STORAGE.TF — All violations resolved
+# Expected: adag scan → PASS (0 violations)
 # =============================================================================
 
-# KMS key with rotation disabled
-resource "aws_kms_key" "Staging_Key_NoRotation" {  # ✗ naming_conventions
-  description             = "Staging key, rotation skipped to save costs"
+resource "aws_kms_key" "staging-app-kms" {
+  description             = "Staging KMS key for S3 encryption"
   deletion_window_in_days = 7
-  enable_key_rotation     = false  # ✗ kms_key_rotation
-
-  tags = {
-    # ✗ required_tagging — missing Owner, Application, CostCenter
-    Notes = "staging only"
-  }
-}
-
-# Public S3 bucket — no encryption, no access block
-resource "aws_s3_bucket" "Staging_Public_Bucket" {  # ✗ naming_conventions
-  bucket = "Staging_Public_Bucket_Acme"  # ✗ naming_conventions
+  enable_key_rotation     = true
 
   tags = {
     Environment = "staging"
-    # ✗ required_tagging — missing Owner, Application, CostCenter, ManagedBy
+    Owner       = "platform-team@acme.com"
+    Application = "core-platform"
+    CostCenter  = "CC-2001"
+    ManagedBy   = "terraform"
   }
 }
 
-# No aws_s3_bucket_public_access_block  → ✗ public_access_block
-# No aws_s3_bucket_server_side_encryption_configuration → ✗ encryption_at_rest
+resource "aws_s3_bucket" "staging-app-assets" {
+  bucket = "staging-app-assets-acme"
+
+  tags = {
+    Environment = "staging"
+    Owner       = "platform-team@acme.com"
+    Application = "core-platform"
+    CostCenter  = "CC-2001"
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "staging-app-assets" {
+  bucket = aws_s3_bucket.staging-app-assets.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "staging-app-assets" {
+  bucket = aws_s3_bucket.staging-app-assets.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.staging-app-kms.arn
+    }
+  }
+}
