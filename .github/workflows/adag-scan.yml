@@ -33,8 +33,11 @@ jobs:
           LLM_PROVIDER: github-models
           GITHUB_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
           GITHUB_MODELS_MODEL: openai/gpt-4.1
+          INTAKE_MODEL: ${{ vars.INTAKE_MODEL }}
+          AUDITOR_MODEL: ${{ vars.AUDITOR_MODEL }}
           LLM_TEMPERATURE: "0"
           LLM_MAX_TOKENS: "4096"
+          USE_RAG: "false"
         run: |
           set +e
           adag scan ./infrastructure/ --format sarif --policies-dir "${{ github.workspace }}/policies" > results.sarif.json 2>scan-stderr.txt
@@ -47,8 +50,11 @@ jobs:
           LLM_PROVIDER: github-models
           GITHUB_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
           GITHUB_MODELS_MODEL: openai/gpt-4.1
+          INTAKE_MODEL: ${{ vars.INTAKE_MODEL }}
+          AUDITOR_MODEL: ${{ vars.AUDITOR_MODEL }}
           LLM_TEMPERATURE: "0"
           LLM_MAX_TOKENS: "4096"
+          USE_RAG: "false"
         run: |
           set +e
           adag scan ./infrastructure/ --format json --policies-dir "${{ github.workspace }}/policies" > results.json 2>>scan-stderr.txt
@@ -78,8 +84,15 @@ jobs:
               const filesScanned = fileResults.length;
               const allViolations = fileResults.flatMap(r => r.violations || []);
               const totalViolations = allViolations.length;
+              const errorFiles = fileResults.filter(r => r.status === 'error');
 
-              if (totalViolations === 0) {
+              if (errorFiles.length > 0) {
+                const firstError = errorFiles[0].error_message || 'Unknown error — check workflow logs.';
+                body = `## ⚠️ ADAG Governance Scan — ERROR\n\n`;
+                body += `Scan failed on **${errorFiles.length}** file(s). Fix the configuration before results can be trusted.\n\n`;
+                body += `**Error:** ${firstError}\n\n`;
+                body += `**${filesScanned}** file(s) scanned · Exit code: \`${exitCode}\``;
+              } else if (totalViolations === 0) {
                 body = `## ✅ ADAG Governance Scan — PASSED\n\n`;
                 body += `No policy violations found across all Terraform files.\n\n`;
                 body += `**${filesScanned}** file(s) scanned · **0** violations`;
@@ -150,3 +163,10 @@ jobs:
         run: |
           echo "ADAG found governance violations. Fix them before merging."
           exit 1
+
+      - name: Fail build on scan error
+        if: steps.scan-json.outputs.exit_code == '2'
+        run: |
+          echo "ADAG scan failed with an error. Check scan-stderr.txt in the uploaded artefacts."
+          cat scan-stderr.txt || true
+          exit 2
