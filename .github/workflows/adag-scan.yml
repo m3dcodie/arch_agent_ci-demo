@@ -30,9 +30,8 @@ jobs:
       - name: Run ADAG scan
         id: scan-json
         env:
-          LLM_PROVIDER: github-models
-          GITHUB_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
-          GITHUB_MODELS_MODEL: openai/gpt-4.1
+          LLM_PROVIDER: github-copilot
+          GH_COPILOT_TOKEN: ${{ secrets.GH_COPILOT_TOKEN }}
           INTAKE_MODEL: ${{ vars.INTAKE_MODEL }}
           AUDITOR_MODEL: ${{ vars.AUDITOR_MODEL }}
           LLM_TEMPERATURE: "0"
