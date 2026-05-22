@@ -67,10 +67,13 @@ resource "aws_rds_cluster" "prod-analytics-cluster" {
 
   deletion_protection = true
 
-  backup_retention_period  = 14
-  preferred_backup_window  = "02:00-03:00"
+  backup_retention_period = 14
+  preferred_backup_window = "02:00-03:00"
 
-  skip_final_snapshot = false
+  availability_zones = ["us-east-1a", "us-east-1b", "us-east-1c"]
+
+  skip_final_snapshot       = false
+  final_snapshot_identifier = "prod-analytics-cluster-final"
 
   tags = {
     Environment = "production"
